@@ -1,0 +1,5 @@
+torch==2.13.0
+numpy==2.4.6
+scipy==1.17.1
+deepinv==0.4.2
+matplotlib==3.11.1

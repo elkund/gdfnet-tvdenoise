@@ -1,0 +1,54 @@
+cff-version: 1.2.0
+message: "If you use this research artifact, cite it and the data sources listed in DATA_LICENSE.md."
+title: "gdfnet-tvdenoise: neural GDF estimation for 2D TV denoising"
+type: software
+license: MIT
+authors:
+  - family-names: "Eklund"
+    given-names: "Tobias"
+date-released: "2026-11-07"
+version: "0.4.0"
+keywords:
+  - "generalized degrees of freedom"
+  - "total variation denoising"
+  - "SURE"
+  - "Morozov discrepancy principle"
+  - "biomedical imaging"
+references:
+  - type: conference-paper
+    title: "MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis"
+    authors:
+      - family-names: "Yang"
+        given-names: "Jiancheng"
+      - family-names: "Shi"
+        given-names: "Rui"
+      - family-names: "Ni"
+        given-names: "Bingbing"
+    year: 2021
+    conference:
+      name: "IEEE International Symposium on Biomedical Imaging (ISBI)"
+    doi: "10.1109/ISBI48211.2021.9434062"
+  - type: article
+    title: "MedMNIST v2: A large-scale lightweight benchmark for 2D and 3D biomedical image classification"
+    authors:
+      - family-names: "Yang"
+        given-names: "Jiancheng"
+    year: 2023
+    journal: "Scientific Data"
+    doi: "10.1038/s41597-022-01721-8"
+  - type: article
+    title: "The Medical Segmentation Decathlon"
+    authors:
+      - family-names: "Antonelli"
+        given-names: "Michela"
+    year: 2022
+    journal: "Nature Communications"
+    doi: "10.1038/s41467-022-30695-9"
+  - type: article
+    title: "The Liver Tumor Segmentation Benchmark (LiTS)"
+    authors:
+      - family-names: "Bilic"
+        given-names: "Patrick"
+    year: 2023
+    journal: "Medical Image Analysis"
+    doi: "10.1016/j.media.2022.102680"

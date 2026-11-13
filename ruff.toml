@@ -1,0 +1,45 @@
+# Ruff configuration for gdfnet-tvdenoise
+# Docs: https://docs.astral.sh/ruff/configuration/
+
+line-length = 100
+indent-width = 4  # ruff counts spaces; tabs are enforced via format.indent-style below
+force-exclude = true
+
+[format]
+indent-style = "tab"
+quote-style = "double"
+line-ending = "lf"
+
+[lint]
+select = [
+	"E",    # pycodestyle errors
+	"W",    # pycodestyle warnings
+	"F",    # pyflakes
+	"I",    # isort
+	"N",    # pep8-naming
+	"D",    # pydocstyle (Google convention)
+	"UP",   # pyupgrade
+	"B",    # flake8-bugbear
+	"SIM",  # flake8-simplify
+	"ANN",  # flake8-annotations (type hints)
+]
+ignore = [
+	"W191",   # indentation contains tabs (we explicitly use tabs)
+	"D206",   # docstring should be indented with spaces (we use tabs)
+	"D100",   # missing docstring in public module
+	"D104",   # missing docstring in public package
+	"D105",   # missing docstring in magic method
+	"D107",   # missing docstring in __init__
+	"D205",   # 1 blank line required between summary and description
+	"N803",   # argument name should be lowercase (allow math notation)
+	"N806",   # variable in function should be lowercase (allow math notation)
+	"ANN401", # allow typing.Any for generic payloads
+	"E501",   # line too long — handled by the formatter
+]
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+_*))$"
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.isort]
+known-first-party = ["gdfnet_tvdenoise"]

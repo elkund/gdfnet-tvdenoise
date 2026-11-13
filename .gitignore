@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.so
+.DS_Store
+.venv/
+venv/
+.ruff_cache/
+.mypy_cache/
+data/lits_raw/
+data/archives/
+data/generated/*.pt
+data/generated/test/*.pt
+data/generated/*.pt.partial*
+data/generated/test/*.pt.partial*
+scratch/
