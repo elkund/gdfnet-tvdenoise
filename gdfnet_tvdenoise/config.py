@@ -335,6 +335,9 @@ LITS_RAW_DIR: Path = DATA_DIR / "lits_raw"
 #: Authoritative LiTS split manifest. For each split, it holds the (patient, z) slices in archive
 #: order and the slice count per archive size.
 LITS_SPLIT_PATH: Path = DATA_DIR / "lits_split.pt"
+#: Tracked summary of one LiTS archive build: volume and slice counts per split and size, plus
+#: the inputs that determine them. Consumers read this instead of the archive payloads.
+LITS_ARCHIVE_MANIFEST_PATH: Path = DATA_DIR / "lits_archive_manifest.pt"
 GENERATED_DIR: Path = DATA_DIR / "generated"
 GENERATED_TEST_DIR: Path = GENERATED_DIR / "test"
 CALIBRATION_DIR: Path = DATA_DIR / "calibration"

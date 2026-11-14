@@ -120,7 +120,8 @@ python -m gdfnet_tvdenoise generate --sweeps all
 ```
 
 - Steps 1 and 2 need `requirements-data.txt`. Steps 4 and 6 read the archives from
-  steps 1 and 2. Step 2 checks the LiTS slices against `data/lits_split.pt`.
+  steps 1 and 2. Step 2 checks the LiTS slices against `data/lits_split.pt` and rewrites the
+  tracked `data/lits_archive_manifest.pt`.
 - Steps 3 and 4 overwrite the bundled calibration files.
 - Step 4 runs a float32 solve on the default device and a float64 reference on the
   CPU in lockstep. It takes about 6.5 h and resumes after an interruption. It prints
@@ -188,6 +189,7 @@ and is the default model. `config.PUBLISHED_MODELS` lists the three directories,
 | `data/generated/test/sweeps_001.pt.xz` | Regularization sweeps: 12 regimes × 25 λ values, 64 px |
 | `data/generated/test/scale_sweeps_001.pt.xz` | Resolution transfer sweeps: 24 regimes × 25 λ values, 128 and 224 px |
 | `data/lits_split.pt` | Authoritative LiTS patient split and slice order for `prepare_archives` |
+| `data/lits_archive_manifest.pt` | LiTS volumes and slices per split and size, with the inputs that determine them |
 
 Each benchmark suite reads the dataset of the same name by default; `scale_parity`
 reads both `parity` and `scale_parity`. The default files are listed in
@@ -225,6 +227,7 @@ data/
   calibration/        solver calibration artifacts
   generated/          training dataset; test/ holds the benchmark datasets
   lits_split.pt       LiTS patient split and slice order
+  lits_archive_manifest.pt  LiTS archive counts per split and size, with their inputs
   archives/           source image archives (not bundled; written by step 1 and 2)
   lits_raw/           raw LiTS volumes (not bundled; written by step 1)
 models/               model_001 to model_003: weights, reports, and plots

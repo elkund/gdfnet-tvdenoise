@@ -40,6 +40,7 @@ from gdfnet_tvdenoise.config import (
 	LITS_AIR_HU_MAX,
 	LITS_AIR_SHIFT_PX,
 	LITS_AIR_SHIFT_STEP_PX,
+	LITS_ARCHIVE_MANIFEST_PATH,
 	LITS_CROP_MARGIN,
 	LITS_HF_REPO,
 	LITS_HF_REVISION,
@@ -466,6 +467,91 @@ def order_by_split(
 	return ordered
 
 
+def archive_manifest(
+	ordered: dict[int, dict[str, list[SliceRecord]]],
+	sizes: Sequence[int],
+	source_dir: Path,
+) -> dict[str, Any]:
+	"""Summarize one archive build into the payload of `LITS_ARCHIVE_MANIFEST_PATH`.
+
+	The counts are the artifact-level facts the manuscript reports. The other fields identify
+	the build inputs, so a later build can detect a changed split manifest, changed generator
+	constants, or changed source volumes without reading the archives.
+
+	Args:
+		ordered: Scanned slices per size and split, in manifest order.
+		sizes: Requested image sizes.
+		source_dir: LiTS source directory holding `imagesTr/` and `labelsTr/`.
+
+	Returns:
+		Manifest payload.
+	"""
+	counts: dict[int, dict[str, torch.Tensor]] = {}
+	patients: set[int] = set()
+	for size in sizes:
+		counts[size] = {}
+		for split in LITS_SPLITS:
+			records = ordered[size][split]
+			patients.update(record.patient for record in records)
+			counts[size][split] = torch.tensor(
+				[len({record.patient for record in records}), len(records)],
+				dtype=torch.int32,
+			)
+	with open(LITS_SPLIT_PATH, "rb") as handle:
+		split_sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
+	return {
+		"patient_ids": torch.tensor(sorted(patients), dtype=torch.int32),
+		"source_bytes": torch.tensor(
+			[
+				[
+					(source_dir / "imagesTr" / f"liver_{patient}.nii.gz").stat().st_size,
+					(source_dir / "labelsTr" / f"liver_{patient}.nii.gz").stat().st_size,
+				]
+				for patient in sorted(patients)
+			],
+			dtype=torch.int64,
+		),
+		"sizes": torch.tensor(list(sizes), dtype=torch.int32),
+		"counts": counts,
+		"split_manifest_sha256": split_sha256,
+		"generator": {
+			"hu_min": LITS_HU_MIN,
+			"hu_max": LITS_HU_MAX,
+			"crop_margin": LITS_CROP_MARGIN,
+			"max_air_fraction": LITS_MAX_AIR_FRACTION,
+			"air_hu_max": LITS_AIR_HU_MAX,
+			"air_shift_px": LITS_AIR_SHIFT_PX,
+			"air_shift_step_px": LITS_AIR_SHIFT_STEP_PX,
+		},
+	}
+
+
+def load_archive_manifest(
+	path: str | Path = LITS_ARCHIVE_MANIFEST_PATH,
+) -> dict[int, dict[str, tuple[int, int]]]:
+	"""Load the archive counts per size and split from the tracked manifest.
+
+	Args:
+		path: Manifest path.
+
+	Returns:
+		Mapping of size to split to (volume count, slice count).
+	"""
+	payload = torch.load(Path(path), map_location="cpu", weights_only=True)
+	manifest: dict[int, dict[str, tuple[int, int]]] = {}
+	for size, per_split in payload["counts"].items():
+		manifest[int(size)] = {}
+		for split in LITS_SPLITS:
+			volumes, slices = (int(value) for value in per_split[split].tolist())
+			if not 0 < volumes <= slices:
+				raise ValueError(
+					f"LiTS archive manifest {path} reports {volumes} volumes and {slices} "
+					f"slices for '{split}' at {size}px."
+				)
+			manifest[int(size)][split] = (volumes, slices)
+	return manifest
+
+
 def prepare_archives(
 	which: str = "lits",
 	*,
@@ -473,6 +559,7 @@ def prepare_archives(
 	archive_dir: str | Path | None = None,
 	sizes: Sequence[int] | None = None,
 	dry_run: bool = False,
+	manifest_path: str | Path | None = None,
 ) -> dict[int, Path]:
 	"""Build the LiTS archives from `data/lits_raw/` with the authoritative split.
 
@@ -486,6 +573,8 @@ def prepare_archives(
 		archive_dir: Optional explicit archive output directory.
 		sizes: Optional resolution subset.
 		dry_run: If True, scan and verify but write nothing.
+		manifest_path: Optional explicit manifest output path; defaults to
+			`config.LITS_ARCHIVE_MANIFEST_PATH`.
 
 	Returns:
 		Mapping of size to written archive path (empty in dry-run mode).
@@ -529,6 +618,10 @@ def prepare_archives(
 		with atomic_write(out_path) as tmp_path, open(tmp_path, "wb") as handle:
 			np.savez_compressed(handle, **payload)
 		outputs[size] = out_path
+	save_pt(
+		archive_manifest(ordered, chosen_sizes, source),
+		Path(manifest_path) if manifest_path is not None else LITS_ARCHIVE_MANIFEST_PATH,
+	)
 	return outputs
 
 

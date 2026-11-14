@@ -19,7 +19,7 @@ module.
 | `features` | `extract_features`, `image_std` |
 | `model` | `SpatialGDFNet`, `ModelNotFoundError`, `FiLMGenerator`, `SpatialResBlock` |
 | `solver` | `tv_denoise`, `tv_denoise_iterates`, `solver_k` |
-| `data` | `fetch_data`, `load_medmnist_images`, `prepare_archives`, `generate_stochastic`, `generate_sweeps`, `create_physics_operator`, `get_medmnist_split_size` |
+| `data` | `fetch_data`, `load_medmnist_images`, `prepare_archives`, `load_archive_manifest`, `generate_stochastic`, `generate_sweeps`, `create_physics_operator`, `get_medmnist_split_size` |
 | `calibration` | `generate_flat_error_table`, `calibrate_k` |
 | `train` | `train` |
 | `benchmarks` | `run_benchmark`, `plot_benchmark`, `evaluate_parity`, `evaluate_sweeps`, `SUITES`; `benchmarks.plots.plot_overview` |
@@ -454,6 +454,16 @@ order. `counts[size][split]` is the number of slices in that size's archive. The
 archive holds the first `counts[size][split]` slices, so the larger archives are prefixes of
 the 64 px archive. The manifest reproduces the archives that the committed datasets,
 `CALIBRATION_IMAGES`, and `CANONICAL_SWEEP_IMAGES` index into.
+
+`prepare_archives` also writes the tracked `data/lits_archive_manifest.pt`
+(`config.LITS_ARCHIVE_MANIFEST_PATH`). `counts[size][split]` holds an int32 pair: the volumes
+and the slices in that size's archive, where a volume counts when at least one of its slices
+survives. It also records the build inputs, so a later build can detect a changed source or a
+changed generator without reading the archives. `split_manifest_sha256` is the digest of the
+split manifest bytes, `generator` holds the HU window, crop margin, and air filters from
+`config.py`, and `patient_ids` with `source_bytes` give the byte size of each volume's
+`imagesTr` and `labelsTr` file in row order. `load_archive_manifest()` returns the counts as
+plain integers and rejects a manifest with a zero volume count or more volumes than slices.
 
 `load_lits_split()` validates the manifest. It rejects repeated slices, patients in more than
 one split, and out-of-range counts. Only the volumes of manifest patients are scanned. The
