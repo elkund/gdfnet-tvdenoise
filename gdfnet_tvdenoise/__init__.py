@@ -6,8 +6,6 @@ from gdfnet_tvdenoise.features import extract_features
 from gdfnet_tvdenoise.inference import compute_mdp, compute_sure, predict_gdf
 from gdfnet_tvdenoise.model import SpatialGDFNet
 
-__version__ = "0.4.0"
-
 __all__ = [
 	"SpatialGDFNet",
 	"compute_mdp",
