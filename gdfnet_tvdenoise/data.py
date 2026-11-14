@@ -471,6 +471,7 @@ def archive_manifest(
 	ordered: dict[int, dict[str, list[SliceRecord]]],
 	sizes: Sequence[int],
 	source_dir: Path,
+	source_patients: Sequence[int],
 ) -> dict[str, Any]:
 	"""Summarize one archive build into the payload of `LITS_ARCHIVE_MANIFEST_PATH`.
 
@@ -482,17 +483,16 @@ def archive_manifest(
 		ordered: Scanned slices per size and split, in manifest order.
 		sizes: Requested image sizes.
 		source_dir: LiTS source directory holding `imagesTr/` and `labelsTr/`.
+		source_patients: Every volume index discovered in `source_dir`, in ascending order.
 
 	Returns:
 		Manifest payload.
 	"""
 	counts: dict[int, dict[str, torch.Tensor]] = {}
-	patients: set[int] = set()
 	for size in sizes:
 		counts[size] = {}
 		for split in LITS_SPLITS:
 			records = ordered[size][split]
-			patients.update(record.patient for record in records)
 			counts[size][split] = torch.tensor(
 				[len({record.patient for record in records}), len(records)],
 				dtype=torch.int32,
@@ -500,14 +500,14 @@ def archive_manifest(
 	with open(LITS_SPLIT_PATH, "rb") as handle:
 		split_sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
 	return {
-		"patient_ids": torch.tensor(sorted(patients), dtype=torch.int32),
+		"patient_ids": torch.tensor(list(source_patients), dtype=torch.int32),
 		"source_bytes": torch.tensor(
 			[
 				[
 					(source_dir / "imagesTr" / f"liver_{patient}.nii.gz").stat().st_size,
 					(source_dir / "labelsTr" / f"liver_{patient}.nii.gz").stat().st_size,
 				]
-				for patient in sorted(patients)
+				for patient in source_patients
 			],
 			dtype=torch.int64,
 		),
@@ -526,21 +526,34 @@ def archive_manifest(
 	}
 
 
+@dataclass(frozen=True)
+class ArchiveManifest:
+	"""Tracked summary of one LiTS archive build.
+
+	Attributes:
+		counts: Volumes and slices per size and split.
+		source_volumes: Volume count discovered in the LiTS source.
+	"""
+
+	counts: dict[int, dict[str, tuple[int, int]]]
+	source_volumes: int
+
+
 def load_archive_manifest(
 	path: str | Path = LITS_ARCHIVE_MANIFEST_PATH,
-) -> dict[int, dict[str, tuple[int, int]]]:
-	"""Load the archive counts per size and split from the tracked manifest.
+) -> ArchiveManifest:
+	"""Load and validate the tracked LiTS archive manifest.
 
 	Args:
 		path: Manifest path.
 
 	Returns:
-		Mapping of size to split to (volume count, slice count).
+		Manifest with the counts per size and split, and the source volume count.
 	"""
 	payload = torch.load(Path(path), map_location="cpu", weights_only=True)
-	manifest: dict[int, dict[str, tuple[int, int]]] = {}
+	counts: dict[int, dict[str, tuple[int, int]]] = {}
 	for size, per_split in payload["counts"].items():
-		manifest[int(size)] = {}
+		counts[int(size)] = {}
 		for split in LITS_SPLITS:
 			volumes, slices = (int(value) for value in per_split[split].tolist())
 			if not 0 < volumes <= slices:
@@ -548,8 +561,11 @@ def load_archive_manifest(
 					f"LiTS archive manifest {path} reports {volumes} volumes and {slices} "
 					f"slices for '{split}' at {size}px."
 				)
-			manifest[int(size)][split] = (volumes, slices)
-	return manifest
+			counts[int(size)][split] = (volumes, slices)
+	source_volumes = int(payload["patient_ids"].numel())
+	if source_volumes < sum(volumes for volumes, _ in counts[min(counts)].values()):
+		raise ValueError(f"LiTS archive manifest {path} has fewer source volumes than splits.")
+	return ArchiveManifest(counts=counts, source_volumes=source_volumes)
 
 
 def prepare_archives(
@@ -589,7 +605,8 @@ def prepare_archives(
 
 	slices, counts = load_lits_split()
 	split_patients = sorted({patient for keys in slices.values() for patient, _ in keys})
-	missing_volumes = sorted(set(split_patients) - set(discover_patients(source)))
+	discovered = discover_patients(source)
+	missing_volumes = sorted(set(split_patients) - set(discovered))
 	if missing_volumes:
 		raise FileNotFoundError(
 			f"LiTS volumes in the split manifest are missing: {missing_volumes}."
@@ -619,7 +636,7 @@ def prepare_archives(
 			np.savez_compressed(handle, **payload)
 		outputs[size] = out_path
 	save_pt(
-		archive_manifest(ordered, chosen_sizes, source),
+		archive_manifest(ordered, chosen_sizes, source, discovered),
 		Path(manifest_path) if manifest_path is not None else LITS_ARCHIVE_MANIFEST_PATH,
 	)
 	return outputs

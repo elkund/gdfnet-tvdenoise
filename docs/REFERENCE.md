@@ -458,12 +458,15 @@ the 64 px archive. The manifest reproduces the archives that the committed datas
 `prepare_archives` also writes the tracked `data/lits_archive_manifest.pt`
 (`config.LITS_ARCHIVE_MANIFEST_PATH`). `counts[size][split]` holds an int32 pair: the volumes
 and the slices in that size's archive, where a volume counts when at least one of its slices
-survives. It also records the build inputs, so a later build can detect a changed source or a
-changed generator without reading the archives. `split_manifest_sha256` is the digest of the
-split manifest bytes, `generator` holds the HU window, crop margin, and air filters from
-`config.py`, and `patient_ids` with `source_bytes` give the byte size of each volume's
-`imagesTr` and `labelsTr` file in row order. `load_archive_manifest()` returns the counts as
-plain integers and rejects a manifest with a zero volume count or more volumes than slices.
+survives. `patient_ids` lists every volume index discovered in the source, and `source_bytes`
+gives the byte size of its `imagesTr` and `labelsTr` file in row order, so the source volume
+count and the excluded count (source volumes minus the volumes in any split) come from the
+manifest too. It also records the build inputs, so a later build can detect a changed source or
+a changed generator without reading the archives: `split_manifest_sha256` is the digest of the
+split manifest bytes, and `generator` holds the HU window, crop margin, and air filters from
+`config.py`. `load_archive_manifest()` returns the counts as plain integers and rejects a
+manifest with a zero volume count, more volumes than slices, or fewer source volumes than split
+volumes.
 
 `load_lits_split()` validates the manifest. It rejects repeated slices, patients in more than
 one split, and out-of-range counts. Only the volumes of manifest patients are scanned. The
